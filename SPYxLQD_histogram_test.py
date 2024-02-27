@@ -1,6 +1,6 @@
 import Portfolio_Class as PF
 
-test = PF.Portfolio(["SPY","LQD"],[100,50],1000)
+test = PF.Portfolio(["SPY","LQD"],[60,40],1000)
 print(test.get_value())
 print(test.get_asset_alloc())
 for i in range(1000):
