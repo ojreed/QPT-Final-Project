@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
+from datetime import timedelta
 
 
 class Portfolio(object):
@@ -15,6 +16,38 @@ class Portfolio(object):
 		self.total_value = self.compute_value()
 		self.target_alloc = self.get_asset_alloc()
 		self.return_history = []
+		self.start = time_stamp0
+		self.end = None
+
+	def set_start(self,day,month,year):
+		for i, row in self.data.iterrows():
+			# Extract date from the row and convert it to datetime object
+			date = pd.to_datetime(row["Date"], format='%Y/%m/%d')
+			
+			# Compare date components (day, month, year)
+			if date.day == day and date.month == month and date.year == year:
+				self.current_ts = i
+				self.total_value = self.compute_value()
+				self.target_alloc = self.get_asset_alloc()
+				self.return_history = []
+				self.start = i
+
+	def set_end(self,day,month,year):
+		for i, row in self.data.iterrows():
+			# Extract date from the row and convert it to datetime object
+			date = pd.to_datetime(row["Date"], format='%Y/%m/%d')
+			
+			# Compare date components (day, month, year)
+			if date.day == day and date.month == month and date.year == year:
+				self.end = i
+
+	def set_end_relative(self,years):
+		self.end = self.start + years*252
+
+	def is_done(self):
+		if self.current_ts >= self.end:
+			return True
+		return False 
 
 	#Helper function to return total value
 	def get_value(self):
@@ -32,18 +65,23 @@ class Portfolio(object):
 		return normalized
 
 	#returns a histogram of returns plotted against the normal curve
-	def histogram(self,bins=10):
-		plt.hist(self.return_history,bins, edgecolor='black')  # Adjust the number of bins as needed
+	def histogram(self, bins=10):
+		df = pd.DataFrame(self.return_history, columns=['Daily Returns'])
+	
+		# Calculate the rolling window 1-year (252 trading days) annual returns
+		annual_returns = df['Daily Returns'].rolling(window=252).sum()
+		frequencies, bins, _ = plt.hist(annual_returns, bins, edgecolor='black')  # Adjust the number of bins as needed
 		plt.xlabel('Percentage Return')
 		plt.ylabel('Frequency')
 		plt.title('Histogram of Percentage Returns')
 		plt.grid(True)
 
 		# Plotting the normal distribution curve for all percentage returns
-		mu, sigma = np.mean(self.return_history), np.std(self.return_history)
-		x = np.linspace(min(self.return_history), max(self.return_history), 100)
-		plt.plot(x, norm.pdf(x, mu, sigma), color='red', label='Normal Distribution')
-
+		mu, sigma = np.mean(annual_returns), np.std(annual_returns)
+		x = np.linspace(annual_returns.min(skipna=True), annual_returns.max(skipna=True), 100)
+		# Scale the normal curve by the maximum frequency of the histogram
+		max_freq = max(frequencies)
+		plt.plot(x, norm.pdf(x, mu, sigma) * max_freq/norm.pdf(mu, mu, sigma), color='red')
 
 		plt.show()
 
@@ -75,3 +113,23 @@ class Portfolio(object):
 			self.holdings[asset] += rebalancing_amount[asset]
 		self.total_value = self.compute_value()
 
+	#helper function that returns true every time our current timestep meets one of our d/w/m/y intervals
+	def is_first_of(self,interval):
+		date_str = self.data.iloc[self.current_ts]["Date"]
+		date = pd.to_datetime(date_str, format='%Y/%m/%d')
+		if interval == "year" or interval == "Year" or interval == "y" or interval == "Y":
+			if date.day == 1 and date.month == 1:
+				return True
+			return False
+		if interval == "month" or interval == "Month" or interval == "m" or interval == "M":
+			if date.day == 1:
+				return True
+			return False
+		if interval == "week" or interval == "Week" or interval == "w" or interval == "W":
+			if date.weekday() == 0:
+				return True
+			return False
+		if interval == "day" or interval == "Day" or interval == "d" or interval == "D":
+			return True
+		print("Key Error: invalid input" + str(interval))
+		return None
