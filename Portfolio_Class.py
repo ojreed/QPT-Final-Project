@@ -23,14 +23,17 @@ class Portfolio(object):
 		for i, row in self.data.iterrows():
 			# Extract date from the row and convert it to datetime object
 			date = pd.to_datetime(row["Date"], format='%Y/%m/%d')
-			
 			# Compare date components (day, month, year)
+			# print(date.day,date.month,date.year)
 			if date.day == day and date.month == month and date.year == year:
+				# print("DATE")
+				# print(date)
 				self.current_ts = i
 				self.total_value = self.compute_value()
 				self.target_alloc = self.get_asset_alloc()
 				self.return_history = []
 				self.start = i
+				return
 
 	def set_end(self,day,month,year):
 		for i, row in self.data.iterrows():
@@ -40,6 +43,7 @@ class Portfolio(object):
 			# Compare date components (day, month, year)
 			if date.day == day and date.month == month and date.year == year:
 				self.end = i
+				return
 
 	def set_end_relative(self,years):
 		self.end = self.start + years*252
@@ -66,10 +70,19 @@ class Portfolio(object):
 
 	#returns a histogram of returns plotted against the normal curve
 	def histogram(self, bins=10):
-		df = pd.DataFrame(self.return_history, columns=['Daily Returns'])
-	
-		# Calculate the rolling window 1-year (252 trading days) annual returns
-		annual_returns = df['Daily Returns'].rolling(window=252).sum()
+		# Initialize lists to store annualized returns
+		return_history_np = np.array(self.return_history)
+		annual_returns = []
+
+		# Pre-calculate the number of possible windows
+		num_windows = len(self.return_history) - 252 + 1
+		
+		# Calculate annualized returns for each one-year moving window
+		for i in range(num_windows):
+			window_returns = return_history_np[i:i + 252]
+			annual_return = np.prod(1 + window_returns) - 1
+			annual_returns.append(annual_return)
+
 		frequencies, bins, _ = plt.hist(annual_returns, bins, edgecolor='black')  # Adjust the number of bins as needed
 		plt.xlabel('Percentage Return')
 		plt.ylabel('Frequency')
@@ -78,7 +91,7 @@ class Portfolio(object):
 
 		# Plotting the normal distribution curve for all percentage returns
 		mu, sigma = np.mean(annual_returns), np.std(annual_returns)
-		x = np.linspace(annual_returns.min(skipna=True), annual_returns.max(skipna=True), 100)
+		x = np.linspace(min(annual_returns), max(annual_returns), 100)
 		# Scale the normal curve by the maximum frequency of the histogram
 		max_freq = max(frequencies)
 		plt.plot(x, norm.pdf(x, mu, sigma) * max_freq/norm.pdf(mu, mu, sigma), color='red')
