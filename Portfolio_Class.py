@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Mar  3 12:59:46 2024
+
+@author: setthakorntanom
+"""
+
 import pandas as pd
 import math
 import matplotlib.pyplot as plt
@@ -118,12 +126,16 @@ class Portfolio(object):
 
 	def rebalance(self,transaction_cost=0.02):
 		target_allocation = self.target_alloc
-		current_allocation = self.get_asset_alloc()
-		difference = {asset: target_allocation[asset] - current_allocation.get(asset, 0) for asset in set(current_allocation) | set(target_allocation)}
-		# Calculate the rebalancing amount for each asset
-		rebalancing_amount = {asset: difference[asset] * self.total_value * (1 - transaction_cost) for asset in difference}
-		for asset in self.asset_list:
-			self.holdings[asset] += rebalancing_amount[asset]
+		for rebalancing_round in range(10):
+			current_allocation = self.get_asset_alloc()
+			difference = {asset: target_allocation[asset] - current_allocation.get(asset, 0) for asset in set(current_allocation) | set(target_allocation)}
+			rebalancing_amount = {}
+			for asset in self.asset_list:
+				if difference[asset] < 0: 
+					rebalancing_amount[asset] = difference[asset] * self.total_value * (1-transaction_cost)**2
+				else:
+					rebalancing_amount[asset] = difference[asset] * self.total_value
+				self.holdings[asset] += rebalancing_amount[asset]
 		self.total_value = self.compute_value()
 
 	#helper function that returns true every time our current timestep meets one of our d/w/m/y intervals
