@@ -138,6 +138,20 @@ class Portfolio(object):
 				self.holdings[asset] += rebalancing_amount[asset]
 		self.total_value = self.compute_value()
 
+	def fast_algo(self,transaction_cost=0.02)
+		#compute basis terms
+		Returns = self.expected_returns() #helper function to get an expected return for each asset
+		Betas, Errors = self.get_betas() #call a get betas helper function taht uses one of the methods of calculating betas from class
+		#compute and sort by Measure of Desierability
+
+		#compute Ci
+
+		#find Z vector
+
+		#find X vector and store as target allocation
+		self.target_alloc = xlabel
+		self.rebalance(transaction_cost)
+
 	#helper function that returns true every time our current timestep meets one of our d/w/m/y intervals
 	def is_first_of(self,interval):
 		date_str = self.data.iloc[self.current_ts]["Date"]
