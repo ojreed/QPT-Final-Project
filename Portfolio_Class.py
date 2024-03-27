@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Mar  3 12:59:46 2024
-
-@author: setthakorntanom
-"""
-
 import pandas as pd
 import math
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
+import statsmodels.api as sm
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 from datetime import timedelta
-
 
 class Portfolio(object):
 	"""docstring for Portfolio"""
-	def __init__(self, asset_list = [], Investments = [],time_stamp0 = 0):
+	def __init__(self, asset_list = [], index = 'SPY', risk_free = 'BIL', Investments = [],time_stamp0 = 0):
 		self.data = pd.read_csv("ETFs_adjclose Feb162024.csv")
 		self.asset_list = asset_list
+		self.index = index
+		self.risk_free = risk_free
+		self.returns = self.calc_hist_return()
 		self.holdings = {k: v for k, v in zip(asset_list, Investments)}
 		self.current_ts = time_stamp0
 		self.total_value = self.compute_value()
@@ -26,6 +25,12 @@ class Portfolio(object):
 		self.return_history = []
 		self.start = time_stamp0
 		self.end = None
+        
+	def calc_hist_return(self):
+		# Calculate daily return of all assets and indices
+		dfReturn = self.data.copy()
+		dfReturn.loc[:,self.data.columns!='Date'] = self.data.loc[:,self.data.columns!='Date'].pct_change()
+		return dfReturn
 
 	def set_start(self,day,month,year):
 		for i, row in self.data.iterrows():
@@ -124,7 +129,7 @@ class Portfolio(object):
 		self.total_value = self.compute_value()
 		self.return_history.append(self.total_value/current-1)
 
-	def rebalance(self,transaction_cost=0.02):
+	def rebalance(self,transaction_cost=0.00):
 		target_allocation = self.target_alloc
 		for rebalancing_round in range(10):
 			current_allocation = self.get_asset_alloc()
@@ -137,20 +142,66 @@ class Portfolio(object):
 					rebalancing_amount[asset] = difference[asset] * self.total_value
 				self.holdings[asset] += rebalancing_amount[asset]
 		self.total_value = self.compute_value()
+        
+	def sharpe_regression(self,window = 252,lamb_obs = 0.99,lamb_sig2_m = 0.94,lamb_sig2_return = 0.94):
+		# Use 1-year rolling window for exponentially weighted regression
+		dfTraining = self.returns.loc[self.current_ts-window+1:self.current_ts,:]
+		# Calculate EWMA market (index) volatility
+		weights_sig2_m = Portfolio.weights(lamb_sig2_m, window)
+		sig2_m = np.inner(dfTraining[self.index]**2,weights_sig2_m)
+        
+		dfParams = pd.DataFrame(np.nan, index=self.asset_list, columns=['return','alpha','beta','mse'])
+        
+		weights_obs = Portfolio.weights(lamb_obs, window)
+		for asset in self.asset_list:
+			model = LinearRegression()
+			# X is daily market index return, y is daily asset return
+			X = dfTraining[self.index].values.reshape(-1,1)
+			y = dfTraining[asset].values
+			# Weight observations exponentially (recent obs have more weights)
+			model = sm.WLS(y, sm.add_constant(X), weights=weights_obs)
+			results = model.fit()
+			dfParams.loc[asset,'return'] = np.inner(dfTraining[asset].values, weights_obs)
+			dfParams.loc[asset,'alpha'] = results.params[0]
+			dfParams.loc[asset,'beta'] = results.params[1]
+			predictions = results.predict()
+			dfParams.loc[asset,'mse'] = np.inner((y - predictions) ** 2,weights_obs)
+            
+		# Calculate risk-free return
+		risk_free_return = np.inner(dfTraining[self.risk_free].values, weights_obs)
+            
+		return dfParams, risk_free_return, sig2_m
+    
 
-	def fast_algo(self,transaction_cost=0.02)
-		#compute basis terms
-		Returns = self.expected_returns() #helper function to get an expected return for each asset
-		Betas, Errors = self.get_betas() #call a get betas helper function taht uses one of the methods of calculating betas from class
-		#compute and sort by Measure of Desierability
-
-		#compute Ci
-
-		#find Z vector
-
-		#find X vector and store as target allocation
-		self.target_alloc = xlabel
-		self.rebalance(transaction_cost)
+	def fast_algo_long(self):
+		# Get parameters beta, average return from linear regression
+		dfParams, rf, sig2_m = self.sharpe_regression()
+		#print(dfParams.loc[:,'return'], rf)
+		dfParams['excess_return'] = dfParams['return']-rf
+		dfParams['excess_return_over_beta'] = dfParams['excess_return'].div(dfParams['beta'])
+        
+		# Sort the dataframe by excess return over beta
+		dfSorted = dfParams.sort_values(by='excess_return_over_beta', ascending=False)
+		dfSorted['Ci_numerator'] = (dfSorted['excess_return'].mul(dfSorted['beta'])).div(dfSorted['mse'])
+		dfSorted['Ci_denominator'] = dfSorted['beta'].pow(2).div(dfSorted['mse'])
+		dfSorted['Ci'] = (sig2_m*dfSorted['Ci_numerator'].cumsum()).div(
+			1+sig2_m*dfSorted['Ci_denominator'].cumsum())
+		#print(dfSorted)       
+        
+		# Select only assets with excess return over beta higher than Ci    
+		dfPortfolio = dfSorted.loc[dfSorted['excess_return_over_beta']>dfSorted['Ci'],:].copy()
+		if dfPortfolio.empty: return self.target_alloc
+		C_cutoff = dfPortfolio.iloc[-1]['Ci']
+		dfPortfolio['Zi'] = (dfPortfolio['beta'].div(dfPortfolio['mse'])).mul(
+			dfPortfolio['excess_return_over_beta'].sub(C_cutoff))
+		dfPortfolio['Xi'] = dfPortfolio['Zi'].div(dfPortfolio['Zi'].sum(axis=0))
+        
+		# Calculate the optimal allcoation
+		fast_alloc = {asset: 0 for asset in self.asset_list}
+		for asset in dfPortfolio.index:
+			fast_alloc[asset] = dfPortfolio.loc[asset,'Xi']   
+		return fast_alloc
+		#print(self.target_alloc)
 
 	#helper function that returns true every time our current timestep meets one of our d/w/m/y intervals
 	def is_first_of(self,interval):
@@ -172,3 +223,8 @@ class Portfolio(object):
 			return True
 		print("Key Error: invalid input" + str(interval))
 		return None
+	@staticmethod
+	def weights(lamb, window):
+		weights_raw = np.power(lamb, np.arange(window)[::-1])
+		weights_norm = weights_raw/np.sum(weights_raw)
+		return weights_norm
