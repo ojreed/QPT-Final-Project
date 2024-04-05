@@ -9,23 +9,56 @@ import statsmodels.api as sm
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from datetime import timedelta
+import seaborn as sns
 
 class Portfolio(object):
 	"""docstring for Portfolio"""
 	def __init__(self, asset_list = [], index = 'SPY', risk_free = 'BIL', Investments = [],time_stamp0 = 0):
+		#setup
 		self.data = pd.read_csv("ETFs_adjclose Feb162024.csv")
 		self.asset_list = asset_list
+		#core values
 		self.index = index
 		self.risk_free = risk_free
 		self.returns = self.calc_hist_return()
 		self.holdings = {k: v for k, v in zip(asset_list, Investments)}
-		self.current_ts = time_stamp0
 		self.total_value = self.compute_value()
 		self.target_alloc = self.get_asset_alloc()
 		self.return_history = []
+		#time series info
+		self.current_ts = time_stamp0
 		self.start = time_stamp0
 		self.end = None
-        
+
+	#generates a smoothed time series for the given past time frame
+	def smooth_ts(self,days,display=False):
+		# Retrieve the index of the last date
+		end_date_index = self.current_ts
+		
+		# Filter the DataFrame to include only the n previous entries prior to the last date
+		filtered_data = self.data.loc[:end_date_index].tail(days)
+		
+		#smooth the data
+		for asset in self.asset_list:
+			x = np.arange(days)
+			y = filtered_data[asset]
+			rft = np.fft.rfft(y)
+			rft[5:] = 0   # Note, rft.shape = 21
+			filtered_data[asset] = np.fft.irfft(rft)
+		if display:
+			# Melt the DataFrame to long-form
+			melted_data = filtered_data.reset_index().melt(id_vars='Date', value_vars=self.asset_list, var_name='Asset', value_name='Value')
+			
+			# Set plot size
+			sns.set(rc={'figure.figsize': (11.7, 8.27)})
+			
+			# Plot the time series
+			sns.lineplot(x='Date', y='Value', hue='Asset', data=melted_data)
+			
+			# Show the plot
+			plt.show()
+		return filtered_data
+		
 	def calc_hist_return(self):
 		# Calculate daily return of all assets and indices
 		dfReturn = self.data.copy()
@@ -142,16 +175,16 @@ class Portfolio(object):
 					rebalancing_amount[asset] = difference[asset] * self.total_value
 				self.holdings[asset] += rebalancing_amount[asset]
 		self.total_value = self.compute_value()
-        
+		
 	def sharpe_regression(self,window = 252,lamb_obs = 0.99,lamb_sig2_m = 0.94,lamb_sig2_return = 0.94):
 		# Use 1-year rolling window for exponentially weighted regression
 		dfTraining = self.returns.loc[self.current_ts-window+1:self.current_ts,:]
 		# Calculate EWMA market (index) volatility
 		weights_sig2_m = Portfolio.weights(lamb_sig2_m, window)
 		sig2_m = np.inner(dfTraining[self.index]**2,weights_sig2_m)
-        
+		
 		dfParams = pd.DataFrame(np.nan, index=self.asset_list, columns=['return','alpha','beta','mse'])
-        
+		
 		weights_obs = Portfolio.weights(lamb_obs, window)
 		for asset in self.asset_list:
 			model = LinearRegression()
@@ -166,12 +199,12 @@ class Portfolio(object):
 			dfParams.loc[asset,'beta'] = results.params[1]
 			predictions = results.predict()
 			dfParams.loc[asset,'mse'] = np.inner((y - predictions) ** 2,weights_obs)
-            
+			
 		# Calculate risk-free return
 		risk_free_return = np.inner(dfTraining[self.risk_free].values, weights_obs)
-            
+			
 		return dfParams, risk_free_return, sig2_m
-    
+	
 
 	def fast_algo_long(self):
 		# Get parameters beta, average return from linear regression
@@ -179,7 +212,7 @@ class Portfolio(object):
 		#print(dfParams.loc[:,'return'], rf)
 		dfParams['excess_return'] = dfParams['return']-rf
 		dfParams['excess_return_over_beta'] = dfParams['excess_return'].div(dfParams['beta'])
-        
+		
 		# Sort the dataframe by excess return over beta
 		dfSorted = dfParams.sort_values(by='excess_return_over_beta', ascending=False)
 		dfSorted['Ci_numerator'] = (dfSorted['excess_return'].mul(dfSorted['beta'])).div(dfSorted['mse'])
@@ -187,7 +220,7 @@ class Portfolio(object):
 		dfSorted['Ci'] = (sig2_m*dfSorted['Ci_numerator'].cumsum()).div(
 			1+sig2_m*dfSorted['Ci_denominator'].cumsum())
 		#print(dfSorted)       
-        
+		
 		# Select only assets with excess return over beta higher than Ci    
 		dfPortfolio = dfSorted.loc[dfSorted['excess_return_over_beta']>dfSorted['Ci'],:].copy()
 		if dfPortfolio.empty: return self.target_alloc
@@ -195,7 +228,7 @@ class Portfolio(object):
 		dfPortfolio['Zi'] = (dfPortfolio['beta'].div(dfPortfolio['mse'])).mul(
 			dfPortfolio['excess_return_over_beta'].sub(C_cutoff))
 		dfPortfolio['Xi'] = dfPortfolio['Zi'].div(dfPortfolio['Zi'].sum(axis=0))
-        
+		
 		# Calculate the optimal allcoation
 		fast_alloc = {asset: 0 for asset in self.asset_list}
 		for asset in dfPortfolio.index:
