@@ -10,12 +10,26 @@ print(test.get_value())
 print(test.get_asset_alloc())
 test.set_start(Start_Date[0],Start_Date[1],Start_Date[2])
 test.set_end_relative(Years)
-test.smooth_ts(252,True)
-# print(test.start)
-# while not test.is_done():
-# 	if test.is_first_of("month"):
-# 		test.rebalance()
-# 	test.update_next()
-# print(test.get_value())
-# print(test.get_asset_alloc())
-# test.histogram(60)
+
+print(test.start)
+while not test.is_done():
+	if test.is_first_of("month"):
+		test.momentum_rebalance(252,7,2)
+	test.update_next()
+print(test.get_value())
+print(test.get_asset_alloc())
+test.histogram(60)
+
+test = PF.Portfolio(asset_list=["SPY","LQD"],Investments=[60,40])
+print(test.get_value())
+print(test.get_asset_alloc())
+test.set_start(Start_Date[0],Start_Date[1],Start_Date[2])
+test.set_end_relative(Years)
+print(test.start)
+while not test.is_done():
+	if test.is_first_of("month"):
+		test.rebalance()
+	test.update_next()
+print(test.get_value())
+print(test.get_asset_alloc())
+test.histogram(60)

@@ -58,6 +58,19 @@ class Portfolio(object):
 			# Show the plot
 			plt.show()
 		return filtered_data
+
+	def momentum_rebalance(self, smoothing_period=252 ,lookback_period=7,keep=1):
+		returns = self.smooth_ts(smoothing_period,False)
+		momentum = returns[self.asset_list].pct_change(lookback_period).iloc[-1]  # Calculate returns over lookback period
+		momentum = momentum.sort_values(ascending=False)
+		i = 0
+		for asset_name, momentum_value in momentum.items():
+			if i < keep:
+				self.target_alloc[asset_name] = 1/keep
+			else: 
+				self.target_alloc[asset_name] = 0
+			i += 1
+		self.rebalance()
 		
 	def calc_hist_return(self):
 		# Calculate daily return of all assets and indices
