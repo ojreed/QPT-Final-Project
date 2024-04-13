@@ -13,8 +13,9 @@ import seaborn as sns
 
 class Portfolio(object):
 	"""docstring for Portfolio"""
-	def __init__(self, asset_list = [], index = 'SPY', risk_free = 'BIL', Investments = [],time_stamp0 = 0):
+	def __init__(self, pf_name = None, asset_list = [], index = 'SPY', risk_free = 'BIL', Investments = [],time_stamp0 = 0):
 		#setup
+		self.pf_name = pf_name
 		self.data = pd.read_csv("ETFs_adjclose Feb162024.csv")
 		self.asset_list = asset_list
 		#core values
@@ -84,6 +85,7 @@ class Portfolio(object):
 			date = pd.to_datetime(row["Date"], format='%Y/%m/%d')
 			# Compare date components (day, month, year)
 			# print(date.day,date.month,date.year)
+			# print(i)
 			if date.day == day and date.month == month and date.year == year:
 				# print("DATE")
 				# print(date)
@@ -127,8 +129,11 @@ class Portfolio(object):
 			normalized[key] = self.holdings[key]/self.total_value
 		return normalized
 
+	def get_date(self):
+		return self.data['Date'].iloc[self.current_ts]
+
 	#returns a histogram of returns plotted against the normal curve
-	def histogram(self, bins=10):
+	def histogram(self, bins=15):
 		# Initialize lists to store annualized returns
 		return_history_np = np.array(self.return_history)
 		annual_returns = []
@@ -145,7 +150,7 @@ class Portfolio(object):
 		frequencies, bins, _ = plt.hist(annual_returns, bins, edgecolor='black')  # Adjust the number of bins as needed
 		plt.xlabel('Percentage Return')
 		plt.ylabel('Frequency')
-		plt.title('Histogram of Percentage Returns')
+		plt.title('Histogram of Percentage Returns - ' + str(self.pf_name))
 		plt.grid(True)
 
 		# Plotting the normal distribution curve for all percentage returns
