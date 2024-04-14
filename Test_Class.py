@@ -22,7 +22,7 @@ class Test_Class(object):
 		print("Inital Value: " + str(test.get_value()))
 		print("Inital Alloc: " + str(test.get_asset_alloc()))
 		test.set_start(self.Start_Date[0],self.Start_Date[1],self.Start_Date[2])
-		print(test.current_ts)
+		# print(test.current_ts)
 		test.set_end_relative(self.Years)
 		dates = []
 		value = []
@@ -30,7 +30,7 @@ class Test_Class(object):
 			value.append(test.get_value())
 			dates.append(test.get_date())
 			if test.is_first_of(freq):
-				test.rebalance()
+				test.rebalance(0.02)
 			test.update_next()
 		print("Final Value: " + str(test.get_value()))
 		print("Final Alloc: " + str(test.get_asset_alloc()))
@@ -58,7 +58,35 @@ class Test_Class(object):
 			dates.append(test.get_date())
 			if test.is_first_of(freq):
 				test.fast_algo_long()
-				test.rebalance()
+				test.rebalance(0.02)
+			test.update_next()
+		print("Final Value: " + str(test.get_value()))
+		print("Final Alloc: " + str(test.get_asset_alloc()))
+		test.histogram(60)
+		self.results_df["Date"] = dates
+		self.results_df[test_name] = value
+
+	def test_RR(self,test_name,asset_list,Investments,freq = 1):
+		print(test_name)
+		if freq == 0:
+			freq = "day"
+		if freq == 1:
+			freq = "month"
+		if freq == 2:
+			freq = "year"	
+		test = PF.Portfolio(pf_name=test_name,asset_list=asset_list,Investments=Investments)
+		print("Inital Value: " + str(test.get_value()))
+		print("Inital Alloc: " + str(test.get_asset_alloc()))
+		test.set_start(self.Start_Date[0],self.Start_Date[1],self.Start_Date[2])
+		test.set_end_relative(self.Years)
+		dates = []
+		value = []
+		while not test.is_done():
+			value.append(test.get_value())
+			dates.append(test.get_date())
+			if test.is_first_of(freq):
+				test.fast_algo_long()
+				test.rebalance(0.02)
 			test.update_next()
 		print("Final Value: " + str(test.get_value()))
 		print("Final Alloc: " + str(test.get_asset_alloc()))

@@ -60,6 +60,18 @@ class Portfolio(object):
 			plt.show()
 		return filtered_data
 
+
+
+	def Round_Robin(self):
+		self.target_alloc = [100/len(self.asset_list)]*len(self.asset_list)
+		self.rebalance(0.02)
+		if detect_bull():
+			self.asset_list = ['XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB']
+			self.momentum_rebalance(252,7,3)
+		else:
+			self.asset_list = ['LQD','BIL','SHY','IEF','TLT','VGSH','VGIT','VGLT','BND']
+			self.momentum_rebalance(252,7,3)
+
 	def momentum_rebalance(self, smoothing_period=252 ,lookback_period=7,keep=1):
 		returns = self.smooth_ts(smoothing_period,False)
 		momentum = returns[self.asset_list].pct_change(lookback_period).iloc[-1]  # Calculate returns over lookback period
@@ -71,7 +83,7 @@ class Portfolio(object):
 			else: 
 				self.target_alloc[asset_name] = 0
 			i += 1
-		self.rebalance()
+		self.rebalance(0.02)
 		
 	def calc_hist_return(self):
 		# Calculate daily return of all assets and indices
@@ -250,7 +262,8 @@ class Portfolio(object):
 		# Calculate the optimal allcoation
 		fast_alloc = {asset: 0 for asset in self.asset_list}
 		for asset in dfPortfolio.index:
-			fast_alloc[asset] = dfPortfolio.loc[asset,'Xi']   
+			fast_alloc[asset] = dfPortfolio.loc[asset,'Xi'] 
+		self.target_alloc = fast_alloc  
 		return fast_alloc
 		#print(self.target_alloc)
 
