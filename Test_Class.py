@@ -85,8 +85,7 @@ class Test_Class(object):
 			value.append(test.get_value())
 			dates.append(test.get_date())
 			if test.is_first_of(freq):
-				test.fast_algo_long()
-				test.rebalance(0.02)
+				test.Round_Robin(4)
 			test.update_next()
 		print("Final Value: " + str(test.get_value()))
 		print("Final Alloc: " + str(test.get_asset_alloc()))

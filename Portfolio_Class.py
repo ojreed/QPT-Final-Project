@@ -30,6 +30,7 @@ class Portfolio(object):
 		self.current_ts = time_stamp0
 		self.start = time_stamp0
 		self.end = None
+		self.era = 1
 
 	#generates a smoothed time series for the given past time frame
 	def smooth_ts(self,days,display=False):
@@ -60,17 +61,60 @@ class Portfolio(object):
 			plt.show()
 		return filtered_data
 
+	def detect_bull(self,days=40):
+		end_date_index = self.current_ts
+		
+		# Filter the DataFrame to include only the n previous entries prior to the last date
+		filtered_data = self.data["SPY"].loc[:end_date_index].tail(150)
+		#smooth the data
+		x = np.arange(days)
+		y = filtered_data
+		rft = np.fft.rfft(y)
+		rft[5:] = 0   # Note, rft.shape = 21
+		filtered_data = np.fft.irfft(rft)
 
-
-	def Round_Robin(self):
-		self.target_alloc = [100/len(self.asset_list)]*len(self.asset_list)
-		self.rebalance(0.02)
-		if detect_bull():
-			self.asset_list = ['XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB']
-			self.momentum_rebalance(252,7,3)
+		# Calculate returns
+		returns = [(filtered_data[i] - filtered_data[i-1]) / filtered_data[i-1] for i in range(1, 150)]
+		
+		if len(returns) < days:
+			return None  # Not enough data to calculate average return for n days
+		
+		# Calculate average return for the past n days
+		avg_return_n_days = sum(returns[-days:]) / days
+		
+		# Calculate average return for the full m days
+		avg_return_m_days = sum(returns) / len(returns)
+		
+		# Check if average return for the past n days is above average return for the full m days
+		if avg_return_n_days > avg_return_m_days:
+			return 1
 		else:
-			self.asset_list = ['LQD','BIL','SHY','IEF','TLT','VGSH','VGIT','VGLT','BND']
-			self.momentum_rebalance(252,7,3)
+			return 0
+
+
+
+	def Round_Robin(self,days=40):
+		if self.detect_bull(days):
+			if self.era != 1:
+				self.era = 1
+				# print("bull")
+				self.asset_list = ['XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB']
+				self.holdings = {k: v for k, v in zip(self.asset_list, [self.total_value/len(self.asset_list)]*len(self.asset_list))}
+				self.target_alloc = self.get_asset_alloc()
+				# print(self.holdings)
+				self.rebalance(0.02)
+			
+			self.momentum_rebalance(252,30,4)
+		else:
+			if self.era == 1:
+				self.era = 0
+				# print("bear")
+				self.asset_list = ["LQD","BIL","SHY","IEF","TLT","VGSH","VGIT","VGLT","BND"]
+				self.holdings = {k: v for k, v in zip(self.asset_list, [self.total_value/len(self.asset_list)]*len(self.asset_list))}
+				self.target_alloc = self.get_asset_alloc()
+				# print(self.holdings)
+				self.rebalance(0.02)
+			self.momentum_rebalance(252,30,4)
 
 	def momentum_rebalance(self, smoothing_period=252 ,lookback_period=7,keep=1):
 		returns = self.smooth_ts(smoothing_period,False)
