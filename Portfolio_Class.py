@@ -31,6 +31,9 @@ class Portfolio(object):
 		self.start = time_stamp0
 		self.end = None
 		self.era = 1
+		self.era_track = []
+		self.era_price = []
+		self.var_threshold = 0
 
 	#generates a smoothed time series for the given past time frame
 	def smooth_ts(self,days,display=False):
@@ -61,37 +64,89 @@ class Portfolio(object):
 			plt.show()
 		return filtered_data
 
-	def detect_bull(self,days=40):
-		end_date_index = self.current_ts
+	# def detect_bull(self,days=40):
+	# 	end_date_index = self.current_ts
 		
-		# Filter the DataFrame to include only the n previous entries prior to the last date
-		filtered_data = self.data["SPY"].loc[:end_date_index].tail(150)
-		#smooth the data
-		x = np.arange(days)
-		y = filtered_data
-		rft = np.fft.rfft(y)
-		rft[5:] = 0   # Note, rft.shape = 21
-		filtered_data = np.fft.irfft(rft)
+	# 	# Filter the DataFrame to include only the n previous entries prior to the last date
+	# 	filtered_data = self.data["SPY"].loc[:end_date_index].tail(150)
+	# 	#smooth the data
+	# 	x = np.arange(days)
+	# 	y = filtered_data
+	# 	rft = np.fft.rfft(y)
+	# 	rft[5:] = 0   # Note, rft.shape = 21
+	# 	filtered_data = np.fft.irfft(rft)
 
+	# 	# Calculate returns
+	# 	returns = [(filtered_data[i] - filtered_data[i-1]) / filtered_data[i-1] for i in range(1, 150)]
+		
+	# 	if len(returns) < days:
+	# 		return None  # Not enough data to calculate average return for n days
+		
+	# 	# Calculate average return for the past n days
+	# 	avg_return_n_days = sum(returns[-days:]) / days
+		
+	# 	# Calculate average return for the full m days
+	# 	avg_return_m_days = sum(returns) / len(returns)
+		
+	# 	# Check if average return for the past n days is above average return for the full m days
+	# 	if avg_return_n_days > avg_return_m_days:
+	# 		return 1
+	# 	else:
+	# 		return 0
+
+	# def calibrate_bull(self,days=40,quantile=0.95):
+	# 	df = pd.DataFrame()
+	# 	df['Price'] = self.data["SPY"].loc[:self.current_ts]
+	# 	# Calculate returns
+	# 	df['Return'] = df['Price'].pct_change()
+
+	# 	# Calculate n day average return
+	# 	n = days
+	# 	df['N_day_average_return'] = df['Return'].rolling(window=n).mean()
+
+	# 	# Calculate variance up to that day
+	# 	df['Variance_up_to_day'] = df['Return'].expanding().var()
+
+	# 	# Calculate n day variance
+	# 	df['N_day_variance'] = df['Return'].rolling(window=n).var()
+
+	# 	self.var_threshold = df['N_day_variance'].quantile(quantile)
+
+		
+
+	# def detect_bull(self,days=40):
+	# 	df = pd.DataFrame()
+	# 	df['Price'] = self.data["SPY"].loc[:self.current_ts].tail(days)
+	# 	df['Return'] = df['Price'].pct_change()
+	# 	if df['Return'].var() >= self.var_threshold:
+	# 		return 0
+	# 	return 1
+
+	def calibrate_bull(self, days=40, quantile=0.95):
+		df = pd.DataFrame()
+		df['Price'] = self.data["SPY"].loc[:self.current_ts]
 		# Calculate returns
-		returns = [(filtered_data[i] - filtered_data[i-1]) / filtered_data[i-1] for i in range(1, 150)]
-		
-		if len(returns) < days:
-			return None  # Not enough data to calculate average return for n days
-		
-		# Calculate average return for the past n days
-		avg_return_n_days = sum(returns[-days:]) / days
-		
-		# Calculate average return for the full m days
-		avg_return_m_days = sum(returns) / len(returns)
-		
-		# Check if average return for the past n days is above average return for the full m days
-		if avg_return_n_days > avg_return_m_days:
-			return 1
-		else:
+		df['Return'] = df['Price'].pct_change()
+
+		# Calculate n day average return
+		n = days
+		df['N_day_average_return'] = df['Return'].rolling(window=n).mean()
+
+		# Calculate semivariance up to that day
+		df['Semivariance_up_to_day'] = df[df['Return'] < 0]['Return'].expanding().var()
+
+		# Calculate n day semivariance
+		df['N_day_semivariance'] = df[df['Return'] < 0]['Return'].rolling(window=n).var()
+
+		self.semivar_threshold = df['N_day_semivariance'].quantile(quantile)
+
+	def detect_bull(self, days=40):
+		df = pd.DataFrame()
+		df['Price'] = self.data["SPY"].loc[:self.current_ts].tail(days)
+		df['Return'] = df['Price'].pct_change()
+		if df[df['Return'] < 0]['Return'].var() >= self.semivar_threshold:
 			return 0
-
-
+		return 1
 
 	def Round_Robin(self,days=40):
 		if self.detect_bull(days):
@@ -102,9 +157,9 @@ class Portfolio(object):
 				self.holdings = {k: v for k, v in zip(self.asset_list, [self.total_value/len(self.asset_list)]*len(self.asset_list))}
 				self.target_alloc = self.get_asset_alloc()
 				# print(self.holdings)
-				self.rebalance(0.02)
+				self.rebalance(0.004)
 			
-			self.momentum_rebalance(252,30,4)
+			self.momentum_rebalance(252,15,3)
 		else:
 			if self.era == 1:
 				self.era = 0
@@ -113,8 +168,10 @@ class Portfolio(object):
 				self.holdings = {k: v for k, v in zip(self.asset_list, [self.total_value/len(self.asset_list)]*len(self.asset_list))}
 				self.target_alloc = self.get_asset_alloc()
 				# print(self.holdings)
-				self.rebalance(0.02)
-			self.momentum_rebalance(252,30,4)
+				self.rebalance(0.004)
+			self.momentum_rebalance(252,15,4)
+		self.era_track.append(self.era)
+		self.era_price.append(self.data["SPY"].iloc[self.current_ts])
 
 	def momentum_rebalance(self, smoothing_period=252 ,lookback_period=7,keep=1):
 		returns = self.smooth_ts(smoothing_period,False)
@@ -127,7 +184,7 @@ class Portfolio(object):
 			else: 
 				self.target_alloc[asset_name] = 0
 			i += 1
-		self.rebalance(0.02)
+		self.rebalance(0.004)
 		
 	def calc_hist_return(self):
 		# Calculate daily return of all assets and indices
@@ -218,6 +275,18 @@ class Portfolio(object):
 
 		plt.show()
 
+	def plot_ret(self):
+		fig, ax = plt.subplots(figsize=(10, 6))
+		for i in range(len(self.era_price) - 1):
+			color = 'red' if self.era_track[i] == 0 else 'green'
+			ax.plot([i, i+1], [self.era_price[i], self.era_price[i+1]], color=color)
+
+		ax.set_xlabel('Time')
+		ax.set_ylabel('SPY Price')
+		ax.set_title('Bear vs Bull Markets on SPY')
+		ax.grid(True)
+		plt.show()
+
 
 	#Helper function to compute total value of PF from holdings at current TS
 	def compute_value(self):
@@ -236,7 +305,7 @@ class Portfolio(object):
 		self.total_value = self.compute_value()
 		self.return_history.append(self.total_value/current-1)
 
-	def rebalance(self,transaction_cost=0.00):
+	def rebalance(self,transaction_cost=0.004):
 		target_allocation = self.target_alloc
 		for rebalancing_round in range(10):
 			current_allocation = self.get_asset_alloc()
