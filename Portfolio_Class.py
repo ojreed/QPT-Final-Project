@@ -245,6 +245,7 @@ class Portfolio(object):
 	def get_date(self):
 		return self.data['Date'].iloc[self.current_ts]
 
+
 	#returns a histogram of returns plotted against the normal curve
 	def histogram(self, bins=15):
 		# Initialize lists to store annualized returns
@@ -274,6 +275,15 @@ class Portfolio(object):
 		plt.plot(x, norm.pdf(x, mu, sigma) * max_freq/norm.pdf(mu, mu, sigma), color='red')
 
 		plt.show()
+
+		# # Set the file path where you want to save the plot
+		# file_path = str(self.pf_name) + '_histogram.png'  # You can change the extension to any supported image format (e.g., .png, .jpg, .pdf)
+
+		# # Save the plot directly to the file without displaying it
+		# plt.savefig(file_path, dpi=300, bbox_inches='tight')
+
+		# # Close the plot to free up memory (optional)
+		# plt.close()
 
 	def plot_ret(self):
 		fig, ax = plt.subplots(figsize=(10, 6))
@@ -347,7 +357,6 @@ class Portfolio(object):
 		risk_free_return = np.inner(dfTraining[self.risk_free].values, weights_obs)
 			
 		return dfParams, risk_free_return, sig2_m
-	
 
 	def fast_algo_long(self):
 		# Get parameters beta, average return from linear regression

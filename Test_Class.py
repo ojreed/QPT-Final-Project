@@ -95,6 +95,7 @@ class Test_Class(object):
 		self.results_df["Date"] = dates
 		self.results_df[test_name] = value
 
+
 	def test_RR(self,test_name,asset_list,Investments,test_window,quantile,freq = 1):
 		alloc_df = pd.DataFrame(columns=['Date','SPY','XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB',"LQD","BIL","SHY","IEF","TLT","VGSH","VGIT","VGLT","BND"])
 		print(test_name)
@@ -137,6 +138,77 @@ class Test_Class(object):
 		self.results_df["Date"] = dates
 		self.results_df[test_name] = value
 
+	def get_betas(self):
+		return_tracker = pd.DataFrame(columns=['Date','SPY','XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB',"LQD","BIL","SHY","IEF","TLT","VGSH","VGIT","VGLT","BND"])
+		alpha_tracker = pd.DataFrame(columns=['Date','SPY','XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB',"LQD","BIL","SHY","IEF","TLT","VGSH","VGIT","VGLT","BND"])
+		beta_tracker = pd.DataFrame(columns=['Date','SPY','XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB',"LQD","BIL","SHY","IEF","TLT","VGSH","VGIT","VGLT","BND"])
+		portfolios = []
+		for asset in beta_tracker.columns:
+			if asset != "Date":
+				test = PF.Portfolio(pf_name=asset,asset_list=[asset],Investments=[100])
+				test.set_start(self.Start_Date[0],self.Start_Date[1],self.Start_Date[2])
+				test.set_end_relative(self.Years)
+				portfolios.append(test)
+		i = 0
+		while not portfolios[0].is_done():
+			ret_row = {'Date':  test.get_date()}
+			alpha_row = {'Date':  test.get_date()}
+			beta_row = {'Date':  test.get_date()}
+			for test in portfolios:
+				if asset != "Date":
+					if i > 252:
+						res = test.sharpe_regression()
+						ret_row[test.pf_name] = res[0]["return"][0]
+						alpha_row[test.pf_name] = res[0]["alpha"][0]
+						beta_row[test.pf_name] = res[0]["beta"][0]
+				test.update_next()
+			if i > 252:
+				return_tracker = pd.concat([return_tracker,pd.DataFrame(ret_row,index=[0])])
+				alpha_tracker = pd.concat([alpha_tracker,pd.DataFrame(alpha_row,index=[0])])
+				beta_tracker = pd.concat([beta_tracker,pd.DataFrame(beta_row,index=[0])])
+			i+=1
+		return_tracker.to_csv("Asset_Returns.csv", index=False)	
+		alpha_tracker.to_csv("Asset_Alphas.csv", index=False)	
+		beta_tracker.to_csv("Asset_Betas.csv", index=False)	
+		
+		# Plot asset beta over time
+		plt.figure(figsize=(10, 5))
+		for asset in beta_tracker.columns[1:]:
+			plt.plot(beta_tracker['Date'], beta_tracker[asset], label=asset)
+		plt.title('Asset Beta Over Time')
+		plt.xlabel('Date')
+		plt.ylabel('Beta')
+		plt.legend()
+		plt.xticks(rotation=45)
+
+		# Adjust x-axis labels to show only some of the dates
+		num_dates = 10  # Number of dates to display
+		plt.xticks(
+			range(0, len(beta_tracker['Date']), len(beta_tracker['Date']) // num_dates),
+			beta_tracker['Date'][::len(beta_tracker['Date']) // num_dates], rotation=45
+		)
+
+		plt.tight_layout()
+		plt.show()
+
+		# Plot asset alpha over time
+		plt.figure(figsize=(10, 5))
+		for asset in alpha_tracker.columns[1:]:
+			plt.plot(alpha_tracker['Date'], alpha_tracker[asset], label=asset)
+		plt.title('Asset Alpha Over Time')
+		plt.xlabel('Date')
+		plt.ylabel('Alpha')
+		plt.legend()
+		plt.xticks(rotation=45)
+
+		# Adjust x-axis labels to show only some of the dates
+		plt.xticks(
+			range(0, len(alpha_tracker['Date']), len(alpha_tracker['Date']) // num_dates),
+			alpha_tracker['Date'][::len(alpha_tracker['Date']) // num_dates], rotation=45
+		)
+
+		plt.tight_layout()
+		plt.show()
 
 	def plot(self):
 		# Extracting dates and portfolio values
