@@ -9,7 +9,7 @@ def calculate_combined_stat(asset_allocation_list, beta_csv):
 
     # Initialize an empty DataFrame to store the combined data
     combined_df = pd.DataFrame(index=beta_df.index)
-
+    
     # Iterate through each asset allocation
     for asset_allocation_csv in asset_allocation_list:
         # Extract file name from the file path
@@ -27,9 +27,9 @@ def plot_combined_values(combined_df):
     plt.figure(figsize=(10, 5))
     for column in combined_df.columns:
         plt.plot(combined_df.index, combined_df[column], label=column)
-    plt.title('Alphas Over Time')
+    plt.title('Returns Over Time')
     plt.xlabel('Date')
-    plt.ylabel('Daily Alphas')
+    plt.ylabel('Daily Returns')
     plt.legend()
     plt.xticks(rotation=45)
 
@@ -58,7 +58,7 @@ asset_allocation_list = [
     "Allocations\\Fast Algo - Yearly Allocation.csv",
     "Allocations\\Round Robin - Daily Allocation.csv"
 ]
-beta_csv = "asset_alphas.csv"
+beta_csv = "Asset_Returns.csv"
 
 result_df = calculate_combined_stat(asset_allocation_list, beta_csv)
 
@@ -66,8 +66,3 @@ print("Mean Value for Each List of Asset Allocation:")
 print(result_df.mean())
 
 plot_combined_values(result_df)
-
-
-# Example usage:
-asset_allocation_csv = "Allocations/50-50 SPYxLQD - Monthly Allocation.csv"  # Replace with the path to your asset allocation CSV
-

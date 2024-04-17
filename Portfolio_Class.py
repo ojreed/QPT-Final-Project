@@ -43,6 +43,23 @@ class Portfolio(object):
 		# Filter the DataFrame to include only the n previous entries prior to the last date
 		filtered_data = self.data.loc[:end_date_index].tail(days)
 		
+		if display:
+			# Melt the DataFrame to long-form
+			melted_data = filtered_data.reset_index().melt(id_vars='Date', value_vars=self.asset_list, var_name='Asset', value_name='Value')
+
+			# Set plot size
+			sns.set(rc={'figure.figsize': (11.7, 8.27)})
+
+			# Plot the time series
+			sns.lineplot(x='Date', y='Value', hue='Asset', data=melted_data)
+
+			# Sparsely label x-axis with dates
+			plt.xticks(ticks=np.arange(0, len(filtered_data), step=len(filtered_data)//10), labels=filtered_data['Date'].iloc[np.arange(0, len(filtered_data), step=len(filtered_data)//10)], rotation=45)
+
+			# Show the plot
+			plt.show()
+
+
 		#smooth the data
 		for asset in self.asset_list:
 			x = np.arange(days)
@@ -53,15 +70,19 @@ class Portfolio(object):
 		if display:
 			# Melt the DataFrame to long-form
 			melted_data = filtered_data.reset_index().melt(id_vars='Date', value_vars=self.asset_list, var_name='Asset', value_name='Value')
-			
+
 			# Set plot size
 			sns.set(rc={'figure.figsize': (11.7, 8.27)})
-			
+
 			# Plot the time series
 			sns.lineplot(x='Date', y='Value', hue='Asset', data=melted_data)
-			
+
+			# Sparsely label x-axis with dates
+			plt.xticks(ticks=np.arange(0, len(filtered_data), step=len(filtered_data)//10), labels=filtered_data['Date'].iloc[np.arange(0, len(filtered_data), step=len(filtered_data)//10)], rotation=45)
+
 			# Show the plot
 			plt.show()
+
 		return filtered_data
 
 	# def detect_bull(self,days=40):
