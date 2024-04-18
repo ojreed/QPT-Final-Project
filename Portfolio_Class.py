@@ -26,6 +26,9 @@ class Portfolio(object):
 		self.total_value = self.compute_value()
 		self.target_alloc = self.get_asset_alloc()
 		self.return_history = []
+		self.BM_return_history = []
+		self.BM = 'BIL'
+		self.BMBool = False
 		#time series info
 		self.current_ts = time_stamp0
 		self.start = time_stamp0
@@ -282,6 +285,25 @@ class Portfolio(object):
 			annual_return = np.prod(1 + window_returns) - 1
 			annual_returns.append(annual_return)
 
+		if (self.BMBool):
+
+			# Initialize lists to store annualized returns
+			BMreturn_history_np = np.array(self.BM_return_history)
+			BMannual_returns = []
+
+			# Pre-calculate the number of possible windows
+			num_windows = len(self.return_history) - 252 + 1
+			
+			# Calculate annualized returns for each one-year moving window
+			for i in range(num_windows):
+				BMwindow_returns = BMreturn_history_np[i:i + 252]
+				BMannual_return = np.prod(1 + BMwindow_returns) - 1
+				BMannual_returns.append(BMannual_return)
+			print(annual_returns)
+			for i in range(len(annual_returns)):
+				annual_returns[i] -= BMannual_returns[i]
+
+
 		frequencies, bins, _ = plt.hist(annual_returns, bins, edgecolor='black')  # Adjust the number of bins as needed
 		plt.xlabel('Percentage Return')
 		plt.ylabel('Frequency')
@@ -335,6 +357,7 @@ class Portfolio(object):
 		self.current_ts +=1
 		self.total_value = self.compute_value()
 		self.return_history.append(self.total_value/current-1)
+		self.BM_return_history.append(self.data[self.BM].iloc[self.current_ts]/self.data[self.BM].iloc[self.current_ts-1]-1)
 
 	def rebalance(self,transaction_cost=0.004):
 		target_allocation = self.target_alloc
