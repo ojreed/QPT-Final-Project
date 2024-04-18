@@ -12,3 +12,6 @@ Used to simulate a portfolio in the market
 
 ## Test Class
 Used to run multiple back tests on multiple portfolio classes and generate useable results and CSVs from the tests
+
+## Market Timing
+Computes the Treynor Mazuy regression
