@@ -96,6 +96,48 @@ class Test_Class(object):
 		self.results_df[test_name] = value
 
 
+	def test_fast_algo_S(self,test_name,asset_list,Investments,freq = 1):
+		alloc_df = pd.DataFrame(columns=['Date','SPY','XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB',"LQD","BIL","SHY","IEF","TLT","VGSH","VGIT","VGLT","BND"])
+		print(test_name)
+		if freq == 0:
+			freq = "day"
+		if freq == 1:
+			freq = "month"
+		if freq == 2:
+			freq = "year"	
+		test = PF.Portfolio(pf_name=test_name,asset_list=asset_list,Investments=Investments)
+		print("Inital Value: " + str(test.get_value()))
+		print("Inital Alloc: " + str(test.get_asset_alloc()))
+		test.set_start(self.Start_Date[0],self.Start_Date[1],self.Start_Date[2])
+		test.set_end_relative(self.Years)
+		dates = []
+		value = []
+		while not test.is_done():
+			value.append(test.get_value())
+			dates.append(test.get_date())
+			if test.is_first_of(freq):
+				test.fast_algo('Lintner')
+				test.rebalance(0.004)
+			new_row_data = {'Date':  test.get_date()}
+			for asset, holding in test.holdings.items():
+				new_row_data[asset] = holding
+			for column in alloc_df.columns:
+				if column not in new_row_data:
+					new_row_data[column] = 0
+			alloc_df = pd.concat([alloc_df,pd.DataFrame(new_row_data,index=[0])])
+			test.update_next()
+		# Save the CSV file to the folder
+		file_name = str(test_name) + " Allocation.csv"
+		file_path = os.path.join("Allocations", file_name)
+		alloc_df.to_csv(file_path, index=False)
+		print("Final Value: " + str(test.get_value()))
+		print("Final Alloc: " + str(test.get_asset_alloc()))
+		if self.mode == 1:
+			test.histogram(100)
+		self.results_df["Date"] = dates
+		self.results_df[test_name] = value
+
+
 	def test_RR(self,test_name,asset_list,Investments,test_window,quantile,freq = 1):
 		alloc_df = pd.DataFrame(columns=['Date','SPY','XLE','XLF','XLK','XLV','XLI','XLY','XLP','XLU','XLB',"LQD","BIL","SHY","IEF","TLT","VGSH","VGIT","VGLT","BND"])
 		print(test_name)

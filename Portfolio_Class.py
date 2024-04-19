@@ -402,6 +402,53 @@ class Portfolio(object):
 			
 		return dfParams, risk_free_return, sig2_m
 
+	def fast_algo(self, short = False):
+		# Get parameters beta, average return from linear regression
+		dfParams, rf, sig2_m = self.sharpe_regression()
+		#print(dfParams.loc[:,'return'], rf)
+		dfParams['excess_return'] = dfParams['return']-rf
+		dfParams['excess_return_over_beta'] = dfParams['excess_return'].div(dfParams['beta'])
+		
+		# Sort the dataframe by excess return over beta
+		dfSorted = dfParams.sort_values(by='excess_return_over_beta', ascending=False)
+		dfSorted['Ci_numerator'] = (dfSorted['excess_return'].mul(dfSorted['beta'])).div(dfSorted['mse'])
+		dfSorted['Ci_denominator'] = dfSorted['beta'].pow(2).div(dfSorted['mse'])
+		dfSorted['Ci'] = (sig2_m*dfSorted['Ci_numerator'].cumsum()).div(
+			1+sig2_m*dfSorted['Ci_denominator'].cumsum())     
+		
+		if short == False:
+			# Select only assets with excess return over beta higher than Ci    
+			dfPortfolio = dfSorted.loc[dfSorted['excess_return_over_beta']>dfSorted['Ci'],:].copy()
+			if dfPortfolio.empty: return self.target_alloc
+			C_cutoff = dfPortfolio.iloc[-1]['Ci']
+			dfPortfolio['Zi'] = (dfPortfolio['beta'].div(dfPortfolio['mse'])).mul(
+				dfPortfolio['excess_return_over_beta'].sub(C_cutoff))
+			dfPortfolio['Xi'] = dfPortfolio['Zi'].div(dfPortfolio['Zi'].sum(axis=0))
+
+		elif short=='Lintner':
+			# Select all assets
+			dfPortfolio = dfSorted.copy()
+			C_cutoff = dfPortfolio.iloc[-1]['Ci']
+			dfPortfolio['Zi'] = (dfPortfolio['beta'].div(dfPortfolio['mse'])).mul(
+				dfPortfolio['excess_return_over_beta'].sub(C_cutoff))
+			dfPortfolio['Xi'] = dfPortfolio['Zi'].div((dfPortfolio['Zi'].abs()).sum(axis=0))
+			# print(dfPortfolio['Xi'])
+		
+		elif short=='Leveraged':
+			# Select all assets
+			dfPortfolio = dfSorted.copy()
+			C_cutoff = dfPortfolio.iloc[-1]['Ci']
+			dfPortfolio['Zi'] = (dfPortfolio['beta'].div(dfPortfolio['mse'])).mul(
+				dfPortfolio['excess_return_over_beta'].sub(C_cutoff))
+			dfPortfolio['Xi'] = dfPortfolio['Zi'].div(dfPortfolio['Zi'].sum(axis=0))
+			
+		# Output the optimal allocation
+		fast_alloc = {asset: 0 for asset in self.asset_list}
+		for asset in dfPortfolio.index:
+			fast_alloc[asset] = dfPortfolio.loc[asset,'Xi']
+		return fast_alloc
+
+
 	def fast_algo_long(self):
 		# Get parameters beta, average return from linear regression
 		dfParams, rf, sig2_m = self.sharpe_regression()

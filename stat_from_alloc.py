@@ -27,9 +27,9 @@ def plot_combined_values(combined_df):
     plt.figure(figsize=(10, 5))
     for column in combined_df.columns:
         plt.plot(combined_df.index, combined_df[column], label=column)
-    plt.title('Returns Over Time')
+    plt.title('Betas Over Time')
     plt.xlabel('Date')
-    plt.ylabel('Daily Returns')
+    plt.ylabel('Daily Betas')
     plt.legend()
     plt.xticks(rotation=45)
 
@@ -43,6 +43,7 @@ def plot_combined_values(combined_df):
 
 # Example usage:
 asset_allocation_list = [
+    # "Allocations\\50-50 SPYxLQD - Daily Allocation.csv",
     "Allocations\\50-50 SPYxLQD - Monthly Allocation.csv",
     "Allocations\\50-50 SPYxLQD - Yearly Allocation.csv",
     "Allocations\\60-40 SPYxLQD - Daily Allocation.csv",
@@ -56,9 +57,12 @@ asset_allocation_list = [
     "Allocations\\Fast Algo - Daily Allocation.csv",
     "Allocations\\Fast Algo - Monthly Allocation.csv",
     "Allocations\\Fast Algo - Yearly Allocation.csv",
+    "Allocations\\Fast Algo Lintner - Daily Allocation.csv",
+    "Allocations\\Fast Algo Lintner - Monthly Allocation.csv",
+    "Allocations\\Fast Algo Lintner - Yearly Allocation.csv",
     "Allocations\\Round Robin - Daily Allocation.csv"
 ]
-beta_csv = "Asset_Returns.csv"
+beta_csv = "Asset_Betas.csv"
 
 result_df = calculate_combined_stat(asset_allocation_list, beta_csv)
 

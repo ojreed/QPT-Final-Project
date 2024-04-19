@@ -49,6 +49,9 @@ asset_list = [
     "Fast Algo - Daily",
     "Fast Algo - Monthly",
     "Fast Algo - Yearly",
+    "Fast Algo Lintner - Daily",
+    "Fast Algo Lintner - Monthly",
+    "Fast Algo Lintner - Yearly",
     "Round Robin - Daily"
 ]
 
