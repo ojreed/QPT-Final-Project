@@ -28,7 +28,7 @@ class Portfolio(object):
 		self.return_history = []
 		self.BM_return_history = []
 		self.BM = 'BIL'
-		self.BMBool = False
+		self.BMBool = True
 		#time series info
 		self.current_ts = time_stamp0
 		self.start = time_stamp0

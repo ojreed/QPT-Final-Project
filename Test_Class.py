@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from numpy import mean, std, sqrt
 
 
 class Test_Class(object):
@@ -136,6 +137,8 @@ class Test_Class(object):
 			test.histogram(100)
 		self.results_df["Date"] = dates
 		self.results_df[test_name] = value
+		print("SHARPE RATIO")
+		print(mean(test.BM_return_history)/std(test.return_history)*sqrt(252))
 
 
 	def test_RR(self,test_name,asset_list,Investments,test_window,quantile,freq = 1):

@@ -1,6 +1,6 @@
 import Test_Class as TC
 
-TC = TC.Test_Class((8,8,2018), 5,1)
+TC = TC.Test_Class((8,8,2018), 5,0)
 
 # TC.get_betas()
 
